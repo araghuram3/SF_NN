@@ -13,8 +13,9 @@ import matplotlib.pyplot as plt
 # tensorflow statements
 import tensorflow as tf
 layers = tf.keras.layers
-from keras.preprocessing.image import ImageDataGenerator
-from keras.preprocessing.image import img_to_array
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras.preprocessing.image import img_to_array
+from tensorflow.keras.models import load_model
 tf.compat.v1.disable_eager_execution()
 
 # import functions
@@ -36,7 +37,7 @@ x_train, y_train = createData(train_samples, len(train_samples[0]), img_size, le
 x_test, y_test = createData(test_samples, len(test_samples[0]), img_size, len(classes))
 
 # display data
-display = True
+display = False
 if display:
 	for shape_ind in range(len(classes)):
 		start_ind = shape_ind*len(test_samples[0])
@@ -83,6 +84,13 @@ model.compile(optimizer='adam',
 history = model.fit(x_train, y_train, batch_size=100, epochs=nepochs, validation_data=(x_test, y_test))
 
 print('Execution time: %0.2f seconds' % (time.time() - time_start))
+
+# save model
+model.save('sf_nn_model.h5')
+
+# try loading and testing again
+# new_model = load_model('sf_nn_model.h5')
+# new_model.evaluate(x_test, y_test)
 
 ################ VISUALIZATION / RESULTS ################
 # display confusion matrix
