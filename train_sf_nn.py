@@ -37,7 +37,7 @@ x_train, y_train = createData(train_samples, len(train_samples[0]), img_size, le
 x_test, y_test = createData(test_samples, len(test_samples[0]), img_size, len(classes))
 
 # display data
-display = False
+display = True
 if display:
 	for shape_ind in range(len(classes)):
 		start_ind = shape_ind*len(test_samples[0])

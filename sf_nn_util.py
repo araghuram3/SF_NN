@@ -3,9 +3,10 @@
 # import statements
 import os
 import numpy as np
-import cv2
+# import cv2
 import pandas as pd
 import matplotlib.pyplot as plt
+from PIL import Image
 import seaborn as sns
 
 # load images form directory
@@ -14,10 +15,11 @@ def loadImagesFromDir(path_str, img_size):
 	samples = np.empty((len(images),img_size[1],img_size[0],1))
 	i = 0
 	for fn in images:
-		img = cv2.imread(path_str+'/'+fn)
-		gray_img = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
-		gray_img = cv2.resize(gray_img,dsize=img_size,interpolation=cv2.INTER_CUBIC)
-		samples[i] = gray_img.reclass(img_size[1],img_size[0],1)
+		# img = cv2.imread(path_str+'/'+fn) # this will work with tif but should make it 8 bit instead of 16 bit
+		# gray_img = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
+		# gray_img = cv2.resize(gray_img,dsize=img_size,interpolation=cv2.INTER_CUBIC)
+		gray_img = np.asarray(Image.open(path_str+'/'+fn).resize(img_size))
+		samples[i] = gray_img.reshape(img_size[1],img_size[0],1)
 		i += 1
 	return samples
 
