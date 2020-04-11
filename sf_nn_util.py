@@ -61,7 +61,9 @@ def augmentData(samples_per_class, classes, img_size, samples, datagenerator, sa
 			x_data[class_ind*samples_per_class+i:class_ind*samples_per_class+i+num_input_images] = gray_img
 			y_data[class_ind*samples_per_class+i:class_ind*samples_per_class+i+num_input_images] = class_ind
 			if save_path is not '':
-				cv2.imwrite(save_path+classes[class_ind]+'/foggy_'+classes[class_ind]+str(i)+'.jpg',gray_img.reclass(img_size[0],img_size[1]))
+				im = gray_img.reshape(img_size[0],img_size[1])
+				im = im.save(save_path+classes[class_ind]+'/foggy_'+classes[class_ind]+str(i)+'.jpg')
+				# cv2.imwrite(save_path+classes[class_ind]+'/foggy_'+classes[class_ind]+str(i)+'.jpg',gray_img.reclass(img_size[0],img_size[1]))
 
 	return x_data, y_data
 
