@@ -2,10 +2,14 @@
 
 # import statements
 import os
+import time
 import numpy as np
 # import cv2
 import pandas as pd
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import matplotlib.animation as manimation
 from PIL import Image
 import seaborn as sns
 
@@ -148,3 +152,55 @@ def visualizeWrongPredictions(model, x_test, y_test, classes, samples_per_class,
 			plt.xlabel(classes[label_ind[i]]+'\n'+np.array2string(np.around(pred_val_label_disp[class_ind][i],3)))
 		plt.tight_layout()
 		plt.show()
+
+# display all the test data and their classificaiton in a video format
+def displayClassification(model, test_xdata, test_ydata, img_size, save_path):
+	
+	# initialize writing params
+	FFMpegWriter = manimation.writers['ffmpeg']
+	metadata = dict(title='Movie Test', artist='Matplotlib',
+	                comment='Movie support!')
+	writer = FFMpegWriter(fps=15, metadata=metadata)
+
+	# make predictions using model
+	predictions = model.predict(test_xdata)
+	predict_vec = np.empty(len(test_xdata),dtype=int)
+	score = 0
+	for ind in range(len(predictions)):
+		predict_vec[ind] = np.argmax(predictions[ind])
+		if predict_vec[ind] == test_ydata[ind]:
+			score += 1
+	acc = int(100*score/len(test_ydata))
+
+	# in loop, display left as image and right as the plot of classificaiton
+	figsize = (12,4)
+	dpi = 100
+	fig = plt.figure(figsize=figsize,dpi=dpi)
+	ax1, ax2 = fig.subplots(1,2)
+	ax1.set_xticks([])
+	ax1.set_yticks([])
+	img = ax1.imshow(test_xdata[ind].reshape(img_size[1],img_size[0]), cmap=plt.cm.binary_r, vmin=0, vmax=1)
+	ax1.grid(False)
+	ax1.set_title("Input Image")
+	ax2.plot(range(1,1+len(predict_vec)), predict_vec, label="Predictions")
+	ax2.set_xlabel("Test Slice")
+	ax2.set_ylabel("Class Prediction")
+	ax2.set_yticks([0,1,2])
+	ax2.set_title("Prediction (" + str(acc) )
+	with writer.saving(fig, save_path+'vis_classify.mp4', dpi):
+		for ind in range(len(test_xdata)):
+
+			# display the image
+			img.set_data(test_xdata[ind].reshape(img_size[1],img_size[0]))
+			ax1.set_xlabel(test_ydata[ind])
+
+			# display the plot and plot an extra line showing where along the slices you are
+			l = ax2.plot([ind, ind], [0,max(predict_vec)], 'r', label="Current")
+
+			# store frame
+			writer.grab_frame()
+			l.pop(0).remove()
+
+	# close the figure at the end
+	plt.close(fig)
+
