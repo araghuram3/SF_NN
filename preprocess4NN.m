@@ -1,9 +1,12 @@
 % preprocess data for neural network (make into jpg)
 % will just open up all zip files and extract images
-filePathZips = '03282020/';
+filePathZips = '../experimental/364_TIF_FLIR/';
 
 % call recursive function to open up files
-preprocess_recursive(filePathZips);
+% preprocess_recursive(filePathZips);
+
+% separate files into different classes, crops, train and test
+separateTrainTest(filePathZips)
 
 function preprocess_recursive(filepath)
     
@@ -28,6 +31,7 @@ function preprocess_recursive(filepath)
     
 end
 
+%-----------------------------------------------------------------------------------------
 function convertTifs(filepath)
     % obtain dir of tifs
     tif_dir = dir(strcat(filepath,'*.tif'));
@@ -57,4 +61,65 @@ function imData = loadTiff(path_to_file)
        imData(:,:,i)=TifLink.read();
     end
     TifLink.close()
+end
+
+%-----------------------------------------------------------------------------------------
+function separateTrainTest(path_to_file)
+    
+    % get all folders
+    exp_folders = getFolders(path_to_file);
+    for s = 1:length(exp_folders)
+        exp_folder = strcat(path_to_file,filesep,exp_folders{s});
+        
+        % mkdirs camera folders
+        makeCameraFoldersAndAddFiles(exp_folder,'FLIR');
+%         makeCameraFoldersAndAddFiles(exp_folder,'LWIR');
+%         makeCameraFoldersAndAddFiles(exp_folder,'VIS');
+    end
+
+end
+
+function folder_cell = getFolders(filepath)
+    folders_st = dir(filepath);   % assume starting from current directory
+    folders = {folders_st.name};
+    folder_cell = folders([folders_st.isdir]);
+    folder_cell((strcmp(folder_cell,'.') | ...
+                 strcmp(folder_cell,'..') | ...
+                 strcmp(folder_cell,'FLIR') | ...
+                 strcmp(folder_cell,'VIS') | ...
+                 strcmp(folder_cell,'LWIR') | ...
+                 strcmp(folder_cell,'val') | ...
+                 strcmp(folder_cell,'train'))) = [];
+end
+
+function makeCameraFoldersAndAddFiles(filepath,camera)
+    cam_folder = strcat(filepath,filesep,camera);
+    crop_folders = getFolders(filepath);
+    for c = 1:length(crop_folders)
+        crop_folder = strcat(filepath,filesep,crop_folders{c});
+        files = dir(strcat(crop_folder,filesep,'*',camera,'*'));
+        train_inds = 1:ceil(length(files)/2);
+        train_folder = strcat(cam_folder,filesep,'train');
+        if ~exist(train_folder,'dir')
+            mkdir(train_folder);
+        end
+        if ~exist(strcat(train_folder,filesep,crop_folders{c}),'dir')
+            mkdir(strcat(train_folder,filesep,crop_folders{c}));
+        end
+        for t = train_inds
+            copyfile(strcat(crop_folder,filesep,files(t).name),strcat(strcat(train_folder,filesep,crop_folders{c},filesep,files(t).name)));
+        end
+        test_inds = ceil(length(files)/2)+1:length(files);
+        val_folder = strcat(cam_folder,filesep,'val');
+        if ~exist(val_folder,'dir')
+            mkdir(val_folder);
+        end
+        if ~exist(strcat(val_folder,filesep,crop_folders{c}),'dir')
+            mkdir(strcat(val_folder,filesep,crop_folders{c}));
+        end
+        for t = test_inds
+            copyfile(strcat(crop_folder,filesep,files(t).name),strcat(strcat(val_folder,filesep,crop_folders{c},filesep,files(t).name)));
+        end
+    end
+
 end

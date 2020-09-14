@@ -12,6 +12,8 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as manimation
 from PIL import Image
 import seaborn as sns
+from skimage import io
+from skimage.transform import resize
 
 # load images form directory
 def loadImagesFromDir(path_str, img_size):
@@ -22,31 +24,65 @@ def loadImagesFromDir(path_str, img_size):
 		# img = cv2.imread(path_str+'/'+fn) # this will work with tif but should make it 8 bit instead of 16 bit
 		# gray_img = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
 		# gray_img = cv2.resize(gray_img,dsize=img_size,interpolation=cv2.INTER_CUBIC)
-		gray_img = np.asarray(Image.open(path_str+'/'+fn).resize(img_size))
+		if 'nothing' in path_str:
+			# load in image
+			gray_img = np.asarray(Image.open(path_str+'/'+fn).crop((0,0,101,120)).resize(img_size))
+			plt.xticks([])
+			plt.yticks([])
+			plt.grid(False)
+			plt.imshow(gray_img.reshape(img_size[1],img_size[0]), cmap=plt.cm.binary_r, vmin=0, vmax=1)
+			import matplotlib
+			matplotlib.use("TkAgg")
+			plt.show()
+		elif fn[-3:] == 'tif':
+			gray_img = resize(io.imread(path_str+'/'+fn),(img_size[1],img_size[1]),anti_aliasing=True)
+		else:
+			gray_img = np.asarray(Image.open(path_str+'/'+fn).resize(img_size))
+
 		samples[i] = gray_img.reshape(img_size[1],img_size[0],1)
 		i += 1
 	return samples
 
 # create x and y data from loaded images
 # currently rescales by 255 (need to change this for all data types)
-def createData(samples, samples_per_class, img_size, num_classes):
-	x_data = np.empty((samples_per_class*num_classes,img_size[1],img_size[0],1))
-	y_data = np.empty(samples_per_class*num_classes, dtype=int)
-	for class_ind in range(num_classes):
-		x_data[class_ind*samples_per_class:(class_ind+1)*samples_per_class] = samples[class_ind]/255.
-		y_data[class_ind*samples_per_class:(class_ind+1)*samples_per_class] = class_ind
+def createData(samples, img_size, num_classes):
+	total_samples = 0
+	for s_ind in range(len(samples)):
+		total_samples += len(samples[s_ind])
+
+	# x_data = np.empty((total_samples,img_size[1],img_size[0],1))
+	y_data = np.empty(total_samples, dtype=int)
+	x_data = samples[0]/255.
+	y_data = 0*np.ones(len(samples[0]))
+	for class_ind in range(1,num_classes):
+		print(x_data.shape)
+		print(samples[class_ind].shape)
+		x_data = np.concatenate((x_data, samples[class_ind]/255.), axis=0)
+		y_data = np.concatenate((y_data, class_ind*np.ones(len(samples[class_ind]))), axis=0)
+		
+		# x_data[class_ind*samples_per_class:(class_ind+1)*samples_per_class] = samples[class_ind]/255.
+		# y_data[class_ind*samples_per_class:(class_ind+1)*samples_per_class] = class_ind
 
 	return x_data, y_data
 
 # create x and y data for augmentations
 def augmentData(samples_per_class, classes, img_size, samples, datagenerator, save_path=''):
 
+	# find number of samples
+	total_samples = 0
+	for s_ind in range(len(samples)):
+		num_input_images = len(samples[s_ind])
+		if samples_per_class % num_input_images != 0:
+			samples_per_class -= samples_per_class % num_input_images
+			total_samples += samples_per_class - (samples_per_class % num_input_images)
+
 	# create training and testing data
-	x_data = np.empty((samples_per_class*len(classes),img_size[1],img_size[0]))
-	y_data = np.empty(samples_per_class*len(classes), dtype=int)
+	x_data = np.empty((total_samples,img_size[1],img_size[0],1))
+	y_data = np.empty(total_samples, dtype=int)
 	for class_ind in range(len(classes)):
+		print(classes[class_ind])
 		num_input_images = len(samples[class_ind])
-		
+
 		# create, fit datagenerator and get iterator
 		it = datagenerator.flow(samples[class_ind], batch_size=num_input_images)
 
@@ -60,9 +96,12 @@ def augmentData(samples_per_class, classes, img_size, samples, datagenerator, sa
 				os.remove(save_path+classes[class_ind]+'/'+f)
 
 		# create xdata and ydata
+		print(samples_per_class)
+		print(num_input_images)
 		for i in range(0,samples_per_class,num_input_images):
-			gray_img = it.next().reclass(num_input_images,img_size[1],img_size[0])
-			x_data[class_ind*samples_per_class+i:class_ind*samples_per_class+i+num_input_images] = gray_img
+			print('this worked')
+			gray_img = it.next().reshape(num_input_images,img_size[1],img_size[0],1)
+			x_data[class_ind*samples_per_class+i:class_ind*samples_per_class+i+num_input_images] = gray_img/255.
 			y_data[class_ind*samples_per_class+i:class_ind*samples_per_class+i+num_input_images] = class_ind
 			if save_path is not '':
 				im = gray_img.reshape(img_size[0],img_size[1])
